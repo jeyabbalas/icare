@@ -1,0 +1,53 @@
+Package: iCARE
+Type: Package
+Title: Individualized Coherent Absolute Risk Estimation
+Version: 2.0.0
+Authors@R: c(
+    person("Parichoy", "Pal Choudhury", role = "aut",
+           comment = "Author of the original iCARE package"),
+    person("Paige", "Maas", role = "aut",
+           comment = "Author of the original iCARE package"),
+    person("William", "Wheeler", role = "aut",
+           comment = "Author of the original iCARE package"),
+    person("Nilanjan", "Chatterjee", role = "aut",
+           comment = "Author of the original iCARE package"),
+    person("Jeya Balaji", "Balasubramanian", role = c("aut", "cre"),
+           email = "jeyabbalas@gmail.com",
+           comment = "Refactored, unofficial distribution")
+    )
+Description: Builds, applies and validates absolute risk models. An absolute
+    risk model combines a model for relative risks, a reference sample
+    representing the distribution of risk factors in the population,
+    age-specific disease incidence rates and age-specific rates of competing
+    mortality. Risks are computed coherently for individuals with missing
+    risk factors, and models can be validated in cohort and nested
+    case-control studies for calibration (absolute and relative risk) and
+    discrimination. This is an unofficial, refactored distribution of the
+    Bioconductor package 'iCARE' (Pal Choudhury et al. 2020
+    <doi:10.1371/journal.pone.0228198>); it keeps the user-facing interface,
+    fixes known defects and is implemented in vectorized R without compiled
+    code.
+License: GPL-3 + file LICENSE
+URL: https://jeyabbalas.github.io/icare/, https://github.com/jeyabbalas/icare
+BugReports: https://github.com/jeyabbalas/icare/issues
+Depends:
+    R (>= 4.1.0)
+Imports:
+    ggplot2 (>= 3.5.0),
+    graphics,
+    patchwork (>= 1.2.0),
+    stats,
+    utils
+Suggests:
+    bench,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0),
+    withr
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+biocViews: Software, StatisticalMethod, GenomeWideAssociation
+Config/roxygen2/version: 8.1.1

@@ -1,0 +1,14 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.github$
+^\.gitignore$
+^README\.Rmd$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^tools$
+^CLAUDE\.md$
+^\.lintr$
+^codecov\.yml$
+^doc$
+^Meta$

@@ -1,0 +1,27 @@
+# R
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+.Rcheck/
+*.tar.gz
+src/*.o
+src/*.so
+src/*.dll
+
+# Build artefacts
+/doc/
+/Meta/
+/docs/
+inst/doc/
+vignettes/*.html
+vignettes/*.R
+!vignettes/*.Rmd
+tools/benchmarks/*.rds
+tools/benchmarks/*.csv
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
