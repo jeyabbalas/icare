@@ -92,7 +92,11 @@ adjust_validation_followup <- function(study, interval) {
   observed_followup <- study$exit - study$entry
   outcome <- study$outcome
   onset <- study$onset
-  late <- outcome == 1 & onset > observed_followup
+  # Onsets are compared with the follow-up up to rounding error: with ages
+  # recorded as decimals, exit - entry can fall just below the recorded onset
+  # time of a case diagnosed at exit (70.94 - 61.71 < 9.23 in floating point),
+  # and earlier versions turned such cases into non-cases.
+  late <- outcome == 1 & onset > observed_followup + age_snap_tolerance
   if (any(late)) {
     warn(sum(late), " case(s) have `time.of.onset` after `study.exit.age`; they are ",
          "treated as non-cases censored at exit.")
@@ -100,10 +104,13 @@ adjust_validation_followup <- function(study, interval) {
     onset[late] <- Inf
     outcome[late] <- 0
   }
+  at_exit <- outcome == 1 & onset > observed_followup
+  onset[at_exit] <- observed_followup[at_exit]
   if (is.null(interval)) interval <- observed_followup
   followup <- pmin(interval, observed_followup)
-  # Disease after the end of the risk prediction interval is not an event.
-  outcome[onset > interval] <- 0
+  # Disease after the end of the risk prediction interval is not an event; an
+  # onset at its end (up to rounding error) is.
+  outcome[onset > interval + age_snap_tolerance] <- 0
   list(outcome = outcome, onset = onset, followup = followup,
        observed_followup = observed_followup)
 }
@@ -131,6 +138,12 @@ normalize_prediction_interval <- function(interval, total_followup, n) {
           "`study.data` (", n, ").")
   }
   as.numeric(interval)
+}
+
+#' Readable form of the interval label, for reports and figures
+#' @noRd
+display_prediction_interval <- function(label) {
+  if (identical(label, "Observed Followup")) "observed follow-up" else label
 }
 
 #' Label of the risk prediction interval

@@ -109,7 +109,8 @@ validation <- ModelValidation(
 figure <- plotModelValidation(validation.results = validation)
 
 # E/O by risk-score group next to the absolute risk calibration
-plotModelValidation(validation.results = validation, panels = c("absolute", "eo"))
+plotModelValidation(validation.results = validation,
+                    panels = c("absolute", "eo"))
 }
 \seealso{
 \code{\link[=ModelValidation]{ModelValidation()}}

@@ -181,8 +181,13 @@ classical Hosmer-Lemeshow test. With \code{"observed"}, \eqn{V_g} is the
 variance of \eqn{O_g}, as in earlier versions of iCARE; that test rejects
 too often when groups have few cases and is infinite when a group has
 none. The relative-risk test compares the observed and expected relative
-risks of the groups (each group's risk divided by the mean over groups) on
-\eqn{G - 1} degrees of freedom; it needs a case in every group.
+risks of the groups (each group's risk divided by the mean over groups) by
+a Wald test of the log relative risks on \eqn{G - 1} degrees of freedom; it
+needs a case in every group. Like the \code{"observed"} Hosmer-Lemeshow test,
+it rejects a calibrated model too often when groups have few cases. In
+simulations at the 5\% level, it rejected 11.5\% of the time with 10 cases
+per group on average, 7.7\% with 30 and 6.7\% with 50 (see
+\code{vignette("model-validation")}). With few cases, form fewer groups.
 
 \strong{Confidence intervals} are 95\% Wald intervals: on the log scale for E/O
 ratios and relative risks, and on the risk scale for absolute risks and the

@@ -32,9 +32,14 @@
 study_incidence_by_age <- function(entry, exit, onset, weights = NULL) {
   sampled <- !is.null(weights)
   if (!sampled) weights <- rep(1, length(entry))
-  onset_age <- entry + onset
+  has_onset <- is.finite(onset)
+  # The age at onset is at most the exit age (entry + onset can exceed it by
+  # rounding error), and an onset within rounding error of a whole age is at
+  # that age.
+  onset_age <- rep(Inf, length(onset))
+  onset_age[has_onset] <- snap_to_whole(pmin(entry[has_onset] + onset[has_onset],
+                                             exit[has_onset]))
   end <- pmin(exit, onset_age)
-  has_onset <- is.finite(onset_age)
   # An onset at a whole age a + 1 ends the person-time of year a, so it is
   # counted in that year.
   onset_year <- pmax(ceiling(onset_age) - 1, floor(entry))

@@ -153,7 +153,8 @@ print.icareValid <- function(x, digits = 3, ...) {
   # Wrap the formula to 80 columns, aligned under its first line.
   line("Model formula:", paste(wrap_formula(formula_text, width = 80 - 27),
                                collapse = paste0("\n", strrep(" ", 27))))
-  line("Risk prediction interval:", x$Risk_Prediction_Interval)
+  line("Risk prediction interval:",
+       display_prediction_interval(x$Risk_Prediction_Interval))
   line("Subjects (cases):", paste0(format_count(length(outcome)), " (",
                                    format_count(sum(outcome)), ")"))
   if (!is.null(weights)) {

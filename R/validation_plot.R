@@ -71,7 +71,8 @@
 #' figure <- plotModelValidation(validation.results = validation)
 #'
 #' # E/O by risk-score group next to the absolute risk calibration
-#' plotModelValidation(validation.results = validation, panels = c("absolute", "eo"))
+#' plotModelValidation(validation.results = validation,
+#'                     panels = c("absolute", "eo"))
 #' @export
 plotModelValidation <- function(study.data = NULL, validation.results,
                                 dataset = NULL, model.name = NULL,
@@ -266,7 +267,7 @@ validation_subtitle <- function(data, dataset) {
                      " subjects, ", format_count(sum(data$weights * data$outcome)),
                      " cases)")
   }
-  details <- c(paste("Risk interval:", data$interval),
+  details <- c(paste("Risk interval:", display_prediction_interval(data$interval)),
                sprintf("%s follow-up %.1f years",
                        if (data$sampled) "Weighted mean" else "Mean",
                        weighted_average(data$followup, data$weights)))
@@ -424,6 +425,10 @@ density_bandwidth <- function(x, w, rule) {
   if (is.numeric(rule)) {
     return(rule)
   }
+  # A single subject has no spread to estimate a bandwidth from.
+  if (length(x) < 2L) {
+    return(0.1 * max(abs(x), 1))
+  }
   rule <- tolower(rule)
   if (!rule %in% c("nrd0", "nrd")) {
     selector <- switch(rule, ucv = stats::bw.ucv, bcv = stats::bw.bcv,
@@ -453,6 +458,7 @@ panel_discrimination <- function(data, kernel, bandwidth, base.size) {
           format_names(c("nrd0", "nrd", "ucv", "bcv", "SJ")), ".")
   }
   groups <- list(`Non-cases` = data$outcome == 0, Cases = data$outcome == 1)
+  groups <- groups[vapply(groups, any, logical(1))]
   bandwidths <- vapply(groups, function(g) {
     density_bandwidth(data$score[g], data$weights[g], bandwidth)
   }, numeric(1))

@@ -23,7 +23,7 @@ test_that("validation results print a report", {
   output <- capture.output(print(validations$ncc))
   expect_equal(output[1], "iCARE model validation")
   for (pattern in c("Dataset: +Example nested case-control study", "Weighted subjects",
-                    "Risk prediction interval: +Observed Followup", "E/O: +[0-9.]+ \\(95% CI",
+                    "Risk prediction interval: +observed follow-up", "E/O: +[0-9.]+ \\(95% CI",
                     "Hosmer-Lemeshow test: +chi-square", "^ +\\(variance from the expected risks\\)$",
                     "AUC: +0\\.[0-9]+ \\(95% CI", "E/O \\(95% CI\\)")) {
     expect_true(any(grepl(pattern, output)), label = pattern)

@@ -81,10 +81,31 @@ test_that("absolute risks plot as a histogram", {
 test_that("sampled studies report weighted means in the figure and the report", {
   ncc_figure <- plotModelValidation(validation.results = validations$ncc, draw = FALSE)
   expect_match(ncc_figure$patches$annotation$subtitle, "Weighted mean follow-up")
+  expect_match(ncc_figure$patches$annotation$subtitle, "Risk interval: observed follow-up")
   cohort_figure <- plotModelValidation(validation.results = validations$cohort, draw = FALSE)
   expect_match(cohort_figure$patches$annotation$subtitle, "\\| +Mean follow-up")
+  expect_match(cohort_figure$patches$annotation$subtitle, "Risk interval: 5 years")
   ncc_report <- capture.output(print(validations$ncc))
   expect_true(any(grepl("^Follow-up \\(years\\): +weighted mean", ncc_report)))
   cohort_report <- capture.output(print(validations$cohort))
   expect_true(any(grepl("^Follow-up \\(years\\): +mean", cohort_report)))
+})
+
+test_that("a study with a single case can be plotted", {
+  set.seed(9)
+  n <- 300
+  entry <- stats::runif(n, 50, 70)
+  outcome <- c(1, rep(0, n - 1))
+  study <- data.frame(observed.outcome = outcome, study.entry.age = entry,
+                      study.exit.age = entry + 5,
+                      time.of.onset = ifelse(outcome == 1, 2, Inf))
+  validation <- suppressWarnings(ModelValidation(
+    study, predicted.risk.interval = 5, predicted.risk = stats::runif(n, 0.01, 0.05),
+    linear.predictor = stats::rnorm(n), number.of.percentiles = 2))
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off())
+  expect_s3_class(plotModelValidation(validation.results = validation, draw = FALSE),
+                  "patchwork")
+  expect_equal(density_bandwidth(1.5, 1, "nrd0"), 0.15)
+  expect_equal(density_bandwidth(-0.2, 1, "SJ"), 0.1)
 })

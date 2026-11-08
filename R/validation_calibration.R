@@ -31,7 +31,10 @@
 # * Relative risk: the observed relative risks O_g / mean(O) are compared with
 #   E_g / mean(E) by a Wald test of the log relative risks of G - 1 groups,
 #   with the delta-method covariance from the variance of O_g (as in earlier
-#   versions). The test needs at least one case in every group.
+#   versions). The test needs at least one case in every group. Like the
+#   "observed" Hosmer-Lemeshow test, it rejects too often when groups have
+#   few cases: 11.5% at the 5% level with 10 cases per group, 7.7% with 30 and
+#   6.7% with 50 in tools/simulations/validation-simulation.R.
 
 #' Overall expected-to-observed ratio with its 95% confidence interval
 #' @param weights Inverse inclusion probabilities, or NULL for a full cohort.

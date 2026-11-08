@@ -71,3 +71,17 @@ test_that("an onset at a whole age is counted in the year that ends there", {
   expect_equal(result$cases, c(1, 0))
   expect_equal(result$person_years, c(2, 1))
 })
+
+test_that("onsets are placed at exit and at whole ages up to rounding error", {
+  # Onset times computed separately from the ages (for example from dates) can
+  # put the onset a rounding error past exit or past a whole age.
+  entry <- c(70.5, 69.3, 70)
+  exit <- c(71, 72, 72)
+  onset <- c(0.5 + 1e-12, 71 - 69.3 + 1e-12, Inf)
+  expect_gt(entry[1] + onset[1], exit[1])
+  result <- study_incidence_by_age(entry, exit, onset)
+  expect_equal(result$ages, c(69, 70, 71))
+  # Both onsets are at age 71, which ends year 70.
+  expect_equal(result$cases, c(0, 2, 0))
+  expect_equal(result$person_years, c(0.7, 2.5, 1), tolerance = 1e-9)
+})

@@ -54,6 +54,42 @@ test_that("onsets after exit are censored with a warning (fork patch 5b)", {
   expect_equal(adjusted$onset, c(3, Inf, Inf, Inf, 7))
 })
 
+test_that("cases diagnosed at exit are kept despite rounding error in the ages", {
+  # 70.94 - 61.71 is 9.2299999999999969 in floating point, below the onset
+  # time 9.23; earlier versions turned such cases into non-cases.
+  data <- data.frame(observed.outcome = c(1, 1, 0), study.entry.age = c(61.71, 50.1, 50),
+                     study.exit.age = c(70.94, 55.2, 60), time.of.onset = c(9.23, 5.1, Inf))
+  expect_lt(data$study.exit.age[1] - data$study.entry.age[1], data$time.of.onset[1])
+  study <- validate_study_data(data)
+  expect_no_warning(observed <- adjust_validation_followup(study, NULL))
+  expect_equal(observed$outcome, c(1, 1, 0))
+  expect_equal(observed$onset[1:2], c(70.94 - 61.71, 55.2 - 50.1))
+  expect_equal(observed$onset[3], Inf)
+  # An onset at the end of the prediction interval, up to rounding error, counts.
+  interval <- adjust_validation_followup(study, c(70.94 - 61.71, 5.1 - 1e-12, 5))
+  expect_equal(interval$outcome, c(1, 1, 0))
+  # Onsets later than exit by more than rounding error are still censored.
+  data$time.of.onset[1] <- 9.24
+  expect_warning(adjust_validation_followup(validate_study_data(data), NULL),
+                 "1 case\\(s\\) have `time.of.onset` after")
+})
+
+test_that("ModelValidation() keeps cases whose onset is recorded at exit", {
+  set.seed(14)
+  n <- 400
+  entry <- round(stats::runif(n, 50, 70), 2)
+  followup <- round(stats::runif(n, 1, 10), 2)
+  case <- stats::rbinom(n, 1, 0.2)
+  data <- data.frame(observed.outcome = case, study.entry.age = entry,
+                     study.exit.age = entry + followup,
+                     time.of.onset = ifelse(case == 1, followup, Inf))
+  expect_no_warning(result <- ModelValidation(
+    data, total.followup.validation = TRUE,
+    predicted.risk = stats::runif(n, 0.05, 0.3), linear.predictor = stats::rnorm(n)))
+  expect_equal(result$Subject_Specific_Observed_Outcome, case)
+  expect_equal(sum(result$Study_Incidence_Rate$cases), sum(case))
+})
+
 test_that("the prediction interval is validated and described", {
   expect_null(normalize_prediction_interval(NULL, TRUE, 3))
   expect_null(normalize_prediction_interval(5, TRUE, 3))
