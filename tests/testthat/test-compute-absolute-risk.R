@@ -90,6 +90,25 @@ test_that("a single profile, extra columns and tibble-like inputs are accepted",
   expect_equal(ages_as_matrix$risk, all_risks$risk)
 })
 
+test_that("a single profile works with a model of continuous covariates only", {
+  # (earlier versions stopped with "non-conformable arguments")
+  info <- list(list(name = "famhist", type = "continuous"),
+               list(name = "rd2_everhrt_e", type = "continuous"))
+  args <- list(model.formula = diagnosis ~ famhist + rd2_everhrt_e,
+               model.cov.info = info,
+               model.log.RR = c(famhist = 0.6, rd2_everhrt_e = 0.2),
+               model.ref.dataset = bc$ref_cov_dat[, c("famhist", "rd2_everhrt_e")],
+               model.disease.incidence.rates = bc$bc_inc,
+               model.competing.incidence.rates = bc$mort_inc,
+               apply.age.start = 50, apply.age.interval.length = 10)
+  profiles <- data.frame(famhist = c(0, 1, NA), rd2_everhrt_e = c(1, 0, 1))
+  together <- do.call(computeAbsoluteRisk, c(args, list(apply.cov.profile = profiles)))
+  for (i in 1:3) {
+    alone <- do.call(computeAbsoluteRisk, c(args, list(apply.cov.profile = profiles[i, ])))
+    expect_equal(alone$risk[1, 1], together$risk[i, 1])
+  }
+})
+
 test_that("the result holds the risks, the details and the calibration", {
   result <- complete_risks(profiles_used = profiles[1:4, ], ages = 40, lengths = 10)
   expect_s3_class(result, "icare")

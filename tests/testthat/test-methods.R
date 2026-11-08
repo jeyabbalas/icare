@@ -30,3 +30,17 @@ test_that("validation results print a report", {
   }
   capture.output(expect_invisible(print(validations$cohort)))
 })
+
+test_that("the validation report fits in 80 columns and wraps the formula after '+'", {
+  validations <- example_validations()
+  output <- capture.output(print(validations$ncc))
+  expect_true(all(nchar(output) <= 80))
+  formula_text <- paste(deparse(bc$bc_model_formula, width.cutoff = 500L), collapse = " ")
+  wrapped <- wrap_formula(formula_text, 53)
+  expect_true(all(nchar(wrapped) <= 53))
+  expect_true(all(grepl(" \\+$", wrapped[-length(wrapped)])))
+  expect_equal(paste(wrapped, collapse = " "), formula_text)
+  expect_equal(wrap_formula("y ~ x", 53), "y ~ x")
+  long <- wrap_formula(paste0("y ~ ", strrep("x", 40), " + b"), 30)
+  expect_equal(long, c("y ~", paste(strrep("x", 40), "+"), "b"))
+})

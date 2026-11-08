@@ -139,16 +139,19 @@ print.icareValid <- function(x, digits = 3, ...) {
   line <- function(label, value) {
     cat(formatC(label, width = -27), value, "\n", sep = "")
   }
+  # Means are weighted by the inverse inclusion probabilities in sampled data
+  # (as in plotModelValidation()).
   range_text <- function(v, digits) {
-    sprintf("mean %s (range %s-%s)", format_number(mean(v), digits),
-            format(min(v)), format(max(v)))
+    centre <- if (is.null(weights)) mean(v) else weighted_average(v, weights)
+    sprintf("%s %s (range %s-%s)", if (is.null(weights)) "mean" else "weighted mean",
+            format_number(centre, digits), format(min(v)), format(max(v)))
   }
 
   cat("iCARE model validation\n\n")
   line("Dataset:", args$dataset)
   line("Model:", args$model.name)
   # Wrap the formula to 80 columns, aligned under its first line.
-  line("Model formula:", paste(strwrap(formula_text, width = 80 - 27),
+  line("Model formula:", paste(wrap_formula(formula_text, width = 80 - 27),
                                collapse = paste0("\n", strrep(" ", 27))))
   line("Risk prediction interval:", x$Risk_Prediction_Interval)
   line("Subjects (cases):", paste0(format_count(length(outcome)), " (",
@@ -212,4 +215,37 @@ print.icareValid <- function(x, digits = 3, ...) {
 #' @export
 plot.icareValid <- function(x, ...) {
   plotModelValidation(x$input.args$study.data, x, ...)
+}
+
+# Lines of at most `width` characters, broken after the " + " between terms
+# where possible, so that each continued line ends with "+".
+wrap_formula <- function(text, width) {
+  terms <- strsplit(text, " + ", fixed = TRUE)[[1]]
+  lines <- character(0)
+  current <- ""
+  for (k in seq_along(terms)) {
+    piece <- if (k < length(terms)) paste0(terms[k], " +") else terms[k]
+    candidate <- if (nzchar(current)) paste(current, piece) else piece
+    if (nchar(candidate) <= width || !nzchar(current)) {
+      current <- candidate
+    } else {
+      lines <- c(lines, current)
+      current <- piece
+    }
+  }
+  lines <- c(lines, current)
+  # A single term longer than the width is wrapped at its spaces, keeping a
+  # trailing "+" on the line before it.
+  lines <- unlist(lapply(lines, function(l) {
+    if (nchar(l) <= width) {
+      return(l)
+    }
+    wrapped <- strwrap(l, width)
+    n <- length(wrapped)
+    if (n > 1L && wrapped[n] == "+") {
+      wrapped <- c(wrapped[seq_len(n - 2L)], paste(wrapped[n - 1L], "+"))
+    }
+    wrapped
+  }))
+  lines
 }

@@ -77,3 +77,14 @@ test_that("absolute risks plot as a histogram", {
   expect_s3_class(figure, "ggplot")
   expect_equal(figure$labels$x, "Absolute risk (%)")
 })
+
+test_that("sampled studies report weighted means in the figure and the report", {
+  ncc_figure <- plotModelValidation(validation.results = validations$ncc, draw = FALSE)
+  expect_match(ncc_figure$patches$annotation$subtitle, "Weighted mean follow-up")
+  cohort_figure <- plotModelValidation(validation.results = validations$cohort, draw = FALSE)
+  expect_match(cohort_figure$patches$annotation$subtitle, "\\| +Mean follow-up")
+  ncc_report <- capture.output(print(validations$ncc))
+  expect_true(any(grepl("^Follow-up \\(years\\): +weighted mean", ncc_report)))
+  cohort_report <- capture.output(print(validations$cohort))
+  expect_true(any(grepl("^Follow-up \\(years\\): +mean", cohort_report)))
+})

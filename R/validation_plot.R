@@ -267,8 +267,9 @@ validation_subtitle <- function(data, dataset) {
                      " cases)")
   }
   details <- c(paste("Risk interval:", data$interval),
-               sprintf("Mean follow-up %.1f years", weighted_average(data$followup,
-                                                                     data$weights)))
+               sprintf("%s follow-up %.1f years",
+                       if (data$sampled) "Weighted mean" else "Mean",
+                       weighted_average(data$followup, data$weights)))
   if (!is.null(data$entry)) {
     details <- c(details, sprintf("Age at entry %s-%s years", format(min(data$entry)),
                                   format(max(data$entry))))
