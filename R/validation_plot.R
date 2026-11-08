@@ -11,7 +11,8 @@
 #'   non-cases, with the AUC;
 #' * **D. Incidence by attained age**: the study's incidence rates, with 95%
 #'   confidence intervals, against the population incidence rates of the
-#'   model.
+#'   model (`model.disease.incidence.rates` of the `iCARE.model.object` given
+#'   to [ModelValidation()]; without them, the study's rates only).
 #'
 #' An optional panel shows the E/O ratio of each risk-score group
 #' (`panels = "eo"`). Every panel is square, and the calibration panels have

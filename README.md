@@ -94,29 +94,45 @@ risks
 
 # Validate 5-year risks in a cohort
 cohort <- validation.cohort.data
-five_year <- computeAbsoluteRisk(
-  model.formula = bc_model_formula,
-  model.cov.info = bc_model_cov_info,
-  model.log.RR = bc_model_log_or,
-  model.ref.dataset = ref_cov_dat,
-  model.disease.incidence.rates = bc_inc,
-  model.competing.incidence.rates = mort_inc,
-  apply.age.start = cohort$study.entry.age,
-  apply.age.interval.length = 5,
-  apply.cov.profile = cohort[, all.vars(bc_model_formula)[-1]],
-  return.lp = TRUE
-)
 validation <- ModelValidation(
   study.data = cohort,
   predicted.risk.interval = 5,
-  predicted.risk = five_year$risk[, 1],
-  linear.predictor = five_year$lps[, 1],
+  iCARE.model.object = list(
+    model.formula = bc_model_formula,
+    model.cov.info = bc_model_cov_info,
+    model.log.RR = bc_model_log_or,
+    model.ref.dataset = ref_cov_dat,
+    model.disease.incidence.rates = bc_inc,
+    model.competing.incidence.rates = mort_inc,
+    apply.cov.profile = cohort[, all.vars(bc_model_formula)[-1]]
+  ),
   dataset = "Simulated cohort",
   model.name = "Breast cancer risk model"
 )
-validation                                   # report
-plotModelValidation(validation.results = validation)   # figure
+validation                                            # report
+plotModelValidation(validation.results = validation)  # figure
 ```
+
+## Example figure
+
+The last line of the quick start draws this figure, ready for publication:
+
+<img src="man/figures/README-validation.png" width="100%" alt="Validation figure of the simulated cohort in four square panels. A: observed against expected absolute risk in deciles of the risk score, with E/O 1.00 (95% CI 0.94-1.07) and the Hosmer-Lemeshow test (p = 0.86). B: observed against expected relative risks on log scales, with the relative-risk test (p = 0.78). C: risk-score distributions of cases and non-cases, with AUC 0.588. D: incidence rates of the study and the population by attained age.">
+
+* **A. Absolute risk calibration**: observed against expected risk in each
+  decile of the risk score, with the E/O ratio and the Hosmer-Lemeshow test.
+* **B. Relative risk calibration**: observed against expected relative
+  risks, with the relative-risk test.
+* **C. Discrimination**: the risk scores of cases and non-cases, with the
+  AUC.
+* **D. Incidence by attained age**: the study's incidence rates, with 95%
+  confidence intervals, against the population rates of the model.
+
+The panels are square, and the calibration panels use equal axes. The figure
+is a [patchwork](https://patchwork.data-imaginist.com/) object, which can
+be modified or saved with `ggplot2::ggsave()`. `panels` selects other
+layouts, such as calibration next to the E/O ratio of each risk group (see
+the [validation article](https://jeyabbalas.github.io/icare/articles/model-validation.html)).
 
 ## Documentation
 

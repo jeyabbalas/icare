@@ -176,7 +176,10 @@ When `ModelValidation()` computes the risks itself, a subject followed for
 less than the interval gets a risk over her own follow-up; supplying
 fixed-horizon risks, as here, avoids that when every subject is followed for
 the whole interval (all women in this cohort are followed for at least 5
-years).
+years). With supplied risks, `ModelValidation()` does not need the model,
+so the incidence panel of the figure shows the population rates only if
+they are given, as `iCARE.model.object = list(model.disease.incidence.rates
+= bc_inc)`.
 
 Here the model is well calibrated in every decile. The E/O ratio of each
 group, with its confidence interval, can be drawn next to the calibration

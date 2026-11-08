@@ -79,7 +79,8 @@ risks on log scales, with the relative-risk test;
 non-cases, with the AUC;
 \item \strong{D. Incidence by attained age}: the study's incidence rates, with 95\%
 confidence intervals, against the population incidence rates of the
-model.
+model (\code{model.disease.incidence.rates} of the \code{iCARE.model.object} given
+to \code{\link[=ModelValidation]{ModelValidation()}}; without them, the study's rates only).
 }
 
 An optional panel shows the E/O ratio of each risk-score group
