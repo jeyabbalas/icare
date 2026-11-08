@@ -34,4 +34,5 @@
 #'   15(2): e0228198. \doi{10.1371/journal.pone.0228198}
 #'
 #' @keywords internal
+#' @importFrom ggplot2 .data
 "_PACKAGE"
