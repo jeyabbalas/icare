@@ -106,7 +106,8 @@ computeAbsoluteRiskSplitInterval <- function(apply.age.start, apply.age.interval
   if (is.null(model.bin.fh.name)) model.bin.fh.name <- NA
 
   second_model <- list(apply.cov.profile.2, model.formula.2, model.log.RR.2,
-                       model.ref.dataset.2, model.cov.info.2)
+                       model.ref.dataset.2, model.ref.dataset.weights.2, model.cov.info.2,
+                       if (!is_absent(model.bin.fh.name.2)) model.bin.fh.name.2)
   if (is.null(cut.time) && all(vapply(second_model, is.null, logical(1)))) {
     result <- computeAbsoluteRisk(
       model.formula = model.formula, model.cov.info = model.cov.info,

@@ -124,6 +124,10 @@ test_that("invalid cut ages and second models are rejected", {
     apply.age.interval.length = 30))
   run <- function(...) do.call(computeAbsoluteRiskSplitInterval, c(args, list(...)))
   expect_error(run(model.log.RR.2 = bc$bc_model_log_or_post_50), "`cut.time` must be supplied")
+  expect_error(run(model.ref.dataset.weights.2 = rep(1, nrow(bc$ref_cov_dat))),
+               "`cut.time` must be supplied")
+  expect_error(run(model.bin.fh.name.2 = "famhist"), "`cut.time` must be supplied")
+  expect_equal(run(model.bin.fh.name.2 = NA)$risk, run()$risk)
   expect_error(run(cut.time = NA), "`cut.time` must be numeric")
   expect_error(run(cut.time = c(50, 55, 60)), "length 1 or one value per profile")
   expect_error(run(cut.time = 50, apply.cov.profile.2 = bc$ref_cov_dat[1:3, ]),

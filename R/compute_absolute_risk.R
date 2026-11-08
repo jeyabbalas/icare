@@ -87,9 +87,10 @@
 #' @param apply.cov.profile A data frame of covariate profiles (columns
 #'   matched by name; extra columns are ignored); missing values are allowed.
 #' @param apply.snp.profile A matrix or data frame of genotypes (risk-allele
-#'   counts 0, 1, 2 or `NA`), one column per SNP of `model.snp.info` (matched
-#'   by name when the names are present, otherwise by position). If `NULL`,
-#'   all SNPs are treated as missing.
+#'   counts 0, 1, 2 or `NA`), one column per SNP of `model.snp.info`, matched
+#'   by name when the columns are named after all the SNPs and by position
+#'   when they are named after none (naming only some is an error). If
+#'   `NULL`, all SNPs are treated as missing.
 #' @param return.lp If `TRUE`, also return the linear predictors.
 #' @param return.refs.risk If `TRUE`, also return the risks of the reference
 #'   population over the first profile's interval.

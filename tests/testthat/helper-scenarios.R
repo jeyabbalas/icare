@@ -20,8 +20,10 @@ scenario_inputs <- function(bc) {
   set.seed(2)
   weights <- stats::runif(nrow(bc$ref_cov_dat), 0.5, 3)
 
-  # A random sample of the validation cohort (exit before age 85, the last age
-  # of the example incidence rates)
+  # A random sample of the validation cohort, with exit before age 85 so that
+  # earlier versions can be compared: the example mortality rates are NA from
+  # age 85, which made their risks over intervals ending at 85 NA or
+  # bin-averaged (see test-compute-absolute-risk.R)
   set.seed(50)
   cohort_rows <- sample(nrow(bc$validation.cohort.data), 5000)
   cohort_rows <- cohort_rows[bc$validation.cohort.data$study.exit.age[cohort_rows] < 85]

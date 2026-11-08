@@ -63,6 +63,9 @@ names(snp_profiles) <- bc$bc_72_snps$snp.name
 n_split <- 2000L
 split_profiles <- bc$ref_cov_dat[sample(nrow(bc$ref_cov_dat), n_split, TRUE), ]
 
+# Subjects leaving before age 85: the example mortality rates are NA from 85,
+# which makes earlier versions give NA or bin-averaged risks for intervals
+# ending at 85, so their timings would not be comparable.
 cohort <- bc$validation.cohort.data
 cohort <- cohort[cohort$study.exit.age < 85, ]
 ncc <- bc$validation.nested.case.control.data

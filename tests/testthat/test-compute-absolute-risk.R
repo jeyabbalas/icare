@@ -109,6 +109,33 @@ test_that("a single profile works with a model of continuous covariates only", {
   }
 })
 
+test_that("rates are needed only for the ages inside the intervals", {
+  # The example mortality rates are NA from age 85. An interval ending at 85
+  # does not include age 85, so its risk is defined (earlier versions gave NA,
+  # or, when intervals differed, replaced every profile's risk by the average
+  # of its percentile bin).
+  expect_true(all(is.na(bc$mort_inc[bc$mort_inc[, 1] >= 85, 2])))
+  profiles <- bc$ref_cov_dat[1:6, ]
+  ending_at_85 <- do.call(computeAbsoluteRisk, c(covariate_model_args(bc), list(
+    apply.age.start = c(50, 60, 70, 50, 60, 70), apply.age.interval.length = c(35, 25, 15, 5, 5, 5),
+    apply.cov.profile = profiles, return.lp = TRUE)))
+  expect_false(anyNA(ending_at_85$risk))
+  model <- do.call(build_risk_model, covariate_model_args(bc))
+  prepared <- prepare_covariate_data(profiles, model$covariates$cov_info, "profile", TRUE)
+  design <- build_design_matrix(model$covariates$spec, prepared)
+  lp <- as.vector(design %*% model$beta)
+  expect_equal(as.numeric(ending_at_85$lps), lp)
+  expected <- vapply(1:6, function(i) {
+    reference_absolute_risk(lp[i], ending_at_85$details$Int_Start[i],
+                            ending_at_85$details$Int_End[i] - ending_at_85$details$Int_Start[i],
+                            model$baseline, model$competing)[["risk"]]
+  }, numeric(1))
+  expect_equal(as.numeric(ending_at_85$risk), expected, tolerance = 1e-12)
+  expect_error(do.call(computeAbsoluteRisk, c(covariate_model_args(bc), list(
+    apply.age.start = 50, apply.age.interval.length = 36, apply.cov.profile = profiles))),
+    "no rate for the age\\(s\\) 85")
+})
+
 test_that("the result holds the risks, the details and the calibration", {
   result <- complete_risks(profiles_used = profiles[1:4, ], ages = 40, lengths = 10)
   expect_s3_class(result, "icare")
@@ -162,4 +189,12 @@ test_that("invalid inputs give informative errors", {
   wrong_level$parity[2] <- 9
   expect_error(run(apply.age.start = 40, apply.age.interval.length = 5,
                    apply.cov.profile = wrong_level), "outside the levels")
+})
+
+test_that("SNP profiles without an SNP model are rejected", {
+  bc <- load_example_data()
+  expect_error(do.call(computeAbsoluteRisk, c(covariate_model_args(bc), list(
+    apply.age.start = 50, apply.age.interval.length = 30,
+    apply.cov.profile = bc$new_cov_prof, apply.snp.profile = bc$new_snp_prof))),
+    "the model has no SNPs")
 })

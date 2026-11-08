@@ -119,8 +119,12 @@ build_risk_model <- function(model.formula = NULL, model.cov.info = NULL,
       fh_population <- as_family_history(reference_raw[[fh_name]], "model.ref.dataset",
                                          allow_missing = FALSE)
       fh_column <- family_history_column(model$covariates$spec, fh_name)
+      fh_contrast <- family_history_contrast(model$covariates$spec, reference, fh_name,
+                                             fh_column)
+      # The SNPs explain part of the familial risk: the log relative risk of
+      # family history, fh_contrast * beta, is reduced by the attenuation.
       attenuation <- family_history_attenuation(snps$log_or, snps$freq)
-      beta_covariates[fh_column] <- beta_covariates[fh_column] - attenuation
+      beta_covariates[fh_column] <- beta_covariates[fh_column] - attenuation / fh_contrast
       model$family_history <- list(name = fh_name, column = fh_column,
                                    attenuation = attenuation)
     } else if (has_covariates) {
@@ -310,6 +314,10 @@ prepare_profiles <- function(model, apply.cov.profile = NULL, apply.snp.profile 
     cov_missing <- NULL
   }
 
+  if (!model$has_snps && !is.null(apply.snp.profile)) {
+    abort("`apply.snp.profile` was supplied, but the model has no SNPs: supply ",
+          "`model.snp.info` too.")
+  }
   if (model$has_snps) {
     snp_names <- model$snps$names
     if (is.null(apply.snp.profile)) {

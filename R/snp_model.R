@@ -67,8 +67,10 @@ normalize_snp_info <- function(snp_info) {
 #' Validate `apply.snp.profile`
 #'
 #' Columns are matched to `model.snp.info` by name when all SNP names are
-#' present, and by position otherwise. Genotypes are risk-allele counts (or
-#' dosages) between 0 and 2; NA marks a missing genotype.
+#' present, and by position when none is; a profile naming only some SNPs is
+#' rejected, as its columns cannot be matched safely. Genotypes are
+#' risk-allele counts (or dosages) between 0 and 2; NA marks a missing
+#' genotype.
 #' @return A numeric matrix with one column per SNP, in `model.snp.info` order.
 #' @noRd
 normalize_snp_profile <- function(profile, snp_names, n = NULL) {
@@ -76,8 +78,13 @@ normalize_snp_profile <- function(profile, snp_names, n = NULL) {
     profile <- matrix(profile, ncol = 1L)
   }
   profile <- as_plain_data_frame(profile, "apply.snp.profile")
-  if (all(snp_names %in% names(profile))) {
+  named <- snp_names %in% names(profile)
+  if (all(named)) {
     profile <- profile[, snp_names, drop = FALSE]
+  } else if (any(named)) {
+    abort("`apply.snp.profile` has columns named after some SNPs of `model.snp.info` ",
+          "but none for ", format_names(snp_names[!named]), ". Name its columns after ",
+          "all the SNPs, or after none of them to match them by position.")
   } else if (ncol(profile) != length(snp_names)) {
     abort("`apply.snp.profile` must have one column per SNP in ",
           "`model.snp.info` (", length(snp_names), "); it has ", ncol(profile), ".")
@@ -159,4 +166,34 @@ family_history_column <- function(spec, fh_name) {
           "relative risk can be adjusted for the SNPs.")
   }
   spec$columns[candidates]
+}
+
+#' Change of the family-history design column from no family history to
+#' family history
+#'
+#' 1 when the column indicates family history (the usual 0/1 coding); -1 when
+#' it indicates its absence (a factor with reference level "1"). The SNP
+#' attenuation applies to the log relative risk of family history, which is
+#' this change times the column's coefficient.
+#' @param data Prepared covariate data whose design is described by `spec`.
+#' @noRd
+family_history_contrast <- function(spec, data, fh_name, column) {
+  rows <- data[c(1L, 1L), , drop = FALSE]
+  current <- data[[fh_name]]
+  values <- c("1", "0")
+  rows[[fh_name]] <- if (is.factor(current)) {
+    factor(values, levels = levels(current))
+  } else if (is.character(current)) {
+    values
+  } else {
+    as.numeric(values)
+  }
+  design <- build_design_matrix(spec, rows)
+  contrast <- design[1L, column] - design[2L, column]
+  if (!is.finite(contrast) || contrast == 0) {
+    abort("The design column of `model.bin.fh.name` ('", fh_name, "') does not ",
+          "change with family history, so its log relative risk cannot be ",
+          "adjusted for the SNPs.")
+  }
+  contrast
 }

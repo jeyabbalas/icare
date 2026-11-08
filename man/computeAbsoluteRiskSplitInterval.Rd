@@ -75,9 +75,10 @@ mortality.}
 \item{return.lp}{If \code{TRUE}, also return the linear predictors.}
 
 \item{apply.snp.profile}{A matrix or data frame of genotypes (risk-allele
-counts 0, 1, 2 or \code{NA}), one column per SNP of \code{model.snp.info} (matched
-by name when the names are present, otherwise by position). If \code{NULL},
-all SNPs are treated as missing.}
+counts 0, 1, 2 or \code{NA}), one column per SNP of \code{model.snp.info}, matched
+by name when the columns are named after all the SNPs and by position
+when they are named after none (naming only some is an error). If
+\code{NULL}, all SNPs are treated as missing.}
 
 \item{model.snp.info}{A data frame with columns \code{snp.name},
 \code{snp.odds.ratio} (per-allele odds ratio) and \code{snp.freq} (risk-allele
