@@ -1,0 +1,72 @@
+url: https://jeyabbalas.github.io/icare/
+
+template:
+  bootstrap: 5
+  light-switch: true
+  bslib:
+    primary: "#1D5C96"
+    base_font: {google: {family: "Source Sans 3", wght: [400, 600, 700]}}
+    heading_font: {google: {family: "Source Sans 3", wght: [400, 600, 700]}}
+    code_font: {google: "JetBrains Mono"}
+
+home:
+  title: "iCARE: Individualized Coherent Absolute Risk Estimation (unofficial distribution)"
+  description: >
+    An unofficial, refactored distribution of the R package iCARE, to build,
+    apply and validate absolute risk models. Same interface, known defects
+    fixed, no compiled code.
+  sidebar:
+    structure: [official, links, license, citation, authors, dev]
+    components:
+      official:
+        title: Official iCARE
+        text: >
+          This site documents an unofficial distribution. The official
+          package is on
+          [Bioconductor](https://bioconductor.org/packages/iCARE/)
+          (`BiocManager::install("iCARE")`), with source at
+          [git.bioconductor.org](https://git.bioconductor.org/packages/iCARE)
+          and a development repository at
+          [github.com/parichoy/iCARE](https://github.com/parichoy/iCARE).
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, official, github, lightswitch]
+  components:
+    official:
+      text: Official iCARE
+      href: https://bioconductor.org/packages/iCARE/
+      aria-label: The official iCARE package on Bioconductor
+
+reference:
+- title: Absolute risk
+  desc: Build an absolute risk model and apply it to covariate and SNP profiles.
+  contents:
+  - computeAbsoluteRisk
+  - computeAbsoluteRiskSplitInterval
+  - icare-methods
+- title: Model validation
+  desc: Calibration and discrimination in a cohort or a nested case-control study.
+  contents:
+  - ModelValidation
+  - plotModelValidation
+  - icareValid-methods
+- title: Example data
+  contents:
+  - bc_data
+
+articles:
+- title: Using iCARE
+  navbar: Using iCARE
+  contents:
+  - iCARE
+  - model-validation
+- title: About this distribution
+  navbar: About this distribution
+  contents:
+  - differences
+  - performance
+
+news:
+  cran_dates: false

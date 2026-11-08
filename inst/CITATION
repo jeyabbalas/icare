@@ -1,0 +1,45 @@
+bibentry(
+  bibtype = "Article",
+  header = paste("To cite iCARE in publications, please cite the article",
+                 "describing the package:"),
+  title = "{iCARE}: An {R} package to build, validate and apply absolute risk models",
+  author = c(
+    person("Parichoy", "Pal Choudhury"),
+    person("Paige", "Maas"),
+    person("Amber", "Wilcox"),
+    person("William", "Wheeler"),
+    person("Mark", "Brook"),
+    person("David", "Check"),
+    person("Montserrat", "Garcia-Closas"),
+    person("Nilanjan", "Chatterjee")
+  ),
+  journal = "PLoS ONE",
+  year = "2020",
+  volume = "15",
+  number = "2",
+  pages = "e0228198",
+  doi = "10.1371/journal.pone.0228198",
+  textVersion = paste(
+    "Pal Choudhury P, Maas P, Wilcox A, Wheeler W, Brook M, Check D,",
+    "Garcia-Closas M, Chatterjee N (2020). iCARE: An R package to build,",
+    "validate and apply absolute risk models. PLoS ONE 15(2): e0228198.",
+    "doi:10.1371/journal.pone.0228198"
+  )
+)
+
+bibentry(
+  bibtype = "Manual",
+  header = paste("If you used this unofficial, refactored distribution, please",
+                 "also state its version, for example by citing:"),
+  title = "{iCARE}: Individualized Coherent Absolute Risk Estimation (unofficial refactored distribution)",
+  author = c(
+    person("Parichoy", "Pal Choudhury"),
+    person("Paige", "Maas"),
+    person("William", "Wheeler"),
+    person("Nilanjan", "Chatterjee"),
+    person("Jeya Balaji", "Balasubramanian")
+  ),
+  year = "2026",
+  note = paste("R package version", meta$Version),
+  url = "https://github.com/jeyabbalas/icare"
+)
