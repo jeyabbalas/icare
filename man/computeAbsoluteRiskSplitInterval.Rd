@@ -125,9 +125,11 @@ model gives the risk \eqn{AR_1} over \eqn{[a, c)} and the probability
 model gives the risk \eqn{AR_2} over \eqn{[c, a + \tau)}, and the risk over
 the whole interval is
 \deqn{AR = AR_1 + S_1 AR_2.}
-With the same model on both sides, this equals the risk from
-\code{\link[=computeAbsoluteRisk]{computeAbsoluteRisk()}} over the whole interval for profiles without
-missing risk factors. (Earlier versions combined the parts as
+With the same model on both sides and a whole-number cut age, this equals
+the risk from \code{\link[=computeAbsoluteRisk]{computeAbsoluteRisk()}} over the whole interval for profiles
+without missing risk factors. (A fractional cut age splits a year of age,
+within which the yearly risk model is not exactly additive, so the two can
+then differ very slightly.) (Earlier versions combined the parts as
 \eqn{AR_1 + (1 - AR_1) AR_2}, which ignores deaths from competing causes
 before the cut age and overstates the risk.)
 }

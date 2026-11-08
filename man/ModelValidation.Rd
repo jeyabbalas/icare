@@ -33,8 +33,8 @@ ModelValidation(
 otherwise;
 \item \code{study.entry.age}: age at entry into the study;
 \item \code{study.exit.age}: age at the last follow-up;
-\item \code{time.of.onset}: years from entry to disease onset (\code{Inf} for subjects
-without the disease);
+\item \code{time.of.onset}: years from entry to disease onset (\code{Inf} or \code{NA} for
+subjects without the disease);
 \item \code{sampling.weights} (optional): for a sample from the cohort, such as a
 nested case-control study, each subject's probability of inclusion in
 the sample.
@@ -188,7 +188,7 @@ risks of the groups (each group's risk divided by the mean over groups) on
 ratios and relative risks, and on the risk scale for absolute risks and the
 AUC. The E/O interval in a full cohort treats the expected risks as known;
 in sampled data it also accounts for the sampling variability of the
-expected risk.
+expected risk and its covariance with the observed risk.
 
 \strong{AUC.} The probability that a case has a higher risk score than a
 non-case, counting ties as 1/2, weighted by the inverse inclusion

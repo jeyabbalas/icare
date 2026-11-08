@@ -59,7 +59,7 @@
 #' ratios and relative risks, and on the risk scale for absolute risks and the
 #' AUC. The E/O interval in a full cohort treats the expected risks as known;
 #' in sampled data it also accounts for the sampling variability of the
-#' expected risk.
+#' expected risk and its covariance with the observed risk.
 #'
 #' **AUC.** The probability that a case has a higher risk score than a
 #' non-case, counting ties as 1/2, weighted by the inverse inclusion
@@ -77,8 +77,8 @@
 #'     otherwise;
 #'   * `study.entry.age`: age at entry into the study;
 #'   * `study.exit.age`: age at the last follow-up;
-#'   * `time.of.onset`: years from entry to disease onset (`Inf` for subjects
-#'     without the disease);
+#'   * `time.of.onset`: years from entry to disease onset (`Inf` or `NA` for
+#'     subjects without the disease);
 #'   * `sampling.weights` (optional): for a sample from the cohort, such as a
 #'     nested case-control study, each subject's probability of inclusion in
 #'     the sample.

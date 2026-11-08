@@ -40,6 +40,8 @@ normalize_rate_table <- function(rates, name, consecutive = FALSE) {
   if (nrow(rates) == 0L) {
     abort("`", name, "` has no rows.")
   }
+  # A column of NAs is logical; treat it as numeric.
+  rates[] <- lapply(rates, function(x) if (is.logical(x) && all(is.na(x))) as.numeric(x) else x)
   numeric_columns <- vapply(rates, is.numeric, logical(1))
   if (!all(numeric_columns)) {
     abort("All columns of `", name, "` must be numeric.")

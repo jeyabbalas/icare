@@ -147,8 +147,9 @@ print.icareValid <- function(x, digits = 3, ...) {
   cat("iCARE model validation\n\n")
   line("Dataset:", args$dataset)
   line("Model:", args$model.name)
-  line("Model formula:", paste(strwrap(formula_text, width = 70, exdent = 27),
-                               collapse = "\n"))
+  # Wrap the formula to 80 columns, aligned under its first line.
+  line("Model formula:", paste(strwrap(formula_text, width = 80 - 27),
+                               collapse = paste0("\n", strrep(" ", 27))))
   line("Risk prediction interval:", x$Risk_Prediction_Interval)
   line("Subjects (cases):", paste0(format_count(length(outcome)), " (",
                                    format_count(sum(outcome)), ")"))
@@ -172,10 +173,11 @@ print.icareValid <- function(x, digits = 3, ...) {
   cat("\nCalibration\n")
   line("  E/O:", format_estimate(x$Overall_Expected_to_Observed_Ratio,
                                  x$CI_Overall_Expected_to_Observed_Ratio, digits))
+  line("  Hosmer-Lemeshow test:", test_text(x$Hosmer_Lemeshow_Results))
   hl_variance <- args$hosmer.lemeshow.variance
-  line("  Hosmer-Lemeshow test:", paste0(
-    test_text(x$Hosmer_Lemeshow_Results),
-    if (!is.null(hl_variance)) paste0(" (", hl_variance, "-risk variance)")))
+  if (!is.null(hl_variance)) {
+    line("", paste0("(variance from the ", hl_variance, " risks)"))
+  }
   line("  Relative-risk test:", test_text(x$RR_test_result))
   cat("\nDiscrimination\n")
   line("  AUC:", format_estimate(x$AUC, x$CI_AUC, digits))
@@ -187,8 +189,8 @@ print.icareValid <- function(x, digits = 3, ...) {
       Group = categories$Categories,
       Subjects = format_count(categories$Number_of_Subjects),
       Cases = format_count(categories$Number_of_Cases),
-      `Expected %` = percent(categories$Predicted_Absolute_Risk),
-      `Observed % (95% CI)` = paste0(
+      `Exp. %` = percent(categories$Predicted_Absolute_Risk),
+      `Obs. % (95% CI)` = paste0(
         percent(categories$Observed_Absolute_Risk), " (",
         percent(categories$CI_Absolute_Risk_Lower), " to ",
         percent(categories$CI_Absolute_Risk_Upper), ")"),

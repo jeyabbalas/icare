@@ -36,6 +36,9 @@ normalize_risk_windows <- function(start, length, n, profile_name = "apply.cov.p
   }
   start <- as.vector(start)
   length <- as.vector(length)
+  # A bare NA is logical; report it as a missing value below.
+  if (is.logical(start) && all(is.na(start))) start <- as.numeric(start)
+  if (is.logical(length) && all(is.na(length))) length <- as.numeric(length)
   if (!is.numeric(start) || !is.numeric(length)) {
     abort("`apply.age.start` and `apply.age.interval.length` must be numeric.")
   }

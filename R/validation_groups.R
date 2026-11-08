@@ -46,11 +46,16 @@ risk_score_groups <- function(score, weights = NULL, n_groups = 10L, cutoffs = N
     if (!is.numeric(cutoffs) || anyNA(cutoffs)) {
       abort("`linear.predictor.cutoffs` must be numeric with no missing values.")
     }
-    breaks <- sort(unique(c(min(score), cutoffs, max(score))))
-    if (length(breaks) < 2L) {
-      factor(rep(paste0("[", format(score[1]), "]"), length(score)))
+    # Cut-offs outside the range of the scores bound empty groups. (Kept as
+    # breaks, a cut-off below the minimum would put the subjects at the
+    # minimum in a group of their own, as earlier versions did.)
+    lowest <- min(score)
+    highest <- max(score)
+    inside <- sort(unique(cutoffs[cutoffs > lowest & cutoffs < highest]))
+    if (lowest == highest) {
+      factor(rep(format(lowest), length(score)))
     } else {
-      cut(score, breaks = breaks, include.lowest = TRUE)
+      cut(score, breaks = c(lowest, inside, highest), include.lowest = TRUE)
     }
   } else {
     quantile_groups(score, weights, n_groups)

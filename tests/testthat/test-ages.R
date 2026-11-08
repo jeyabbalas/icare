@@ -1,0 +1,20 @@
+test_that("risk windows are recycled, validated and snapped to whole ages", {
+  windows <- normalize_risk_windows(50, c(5, 10), 2)
+  expect_equal(windows, list(start = c(50, 50), length = c(5, 10)))
+  windows <- normalize_risk_windows(50 + 1e-10, 5 - 2e-10, 1)
+  expect_identical(windows$start, 50)
+  expect_identical(windows$start + windows$length, 55)
+  expect_equal(normalize_risk_windows(50.5, 2.25, 1), list(start = 50.5, length = 2.25))
+  expect_error(normalize_risk_windows(c(50, 51, 52), c(5, 10), 3), "length")
+  expect_error(normalize_risk_windows(NA, 5, 1), "missing")
+  expect_error(normalize_risk_windows(50, -1, 1), "negative")
+  expect_error(normalize_risk_windows(50, Inf, 1), "finite")
+  expect_error(normalize_risk_windows("50", 5, 1), "numeric")
+})
+
+test_that("exposed ages are the years a window overlaps", {
+  expect_equal(exposed_ages(50, 5), 50:54)
+  expect_equal(exposed_ages(50.5, 2), 50:52)
+  expect_equal(exposed_ages(c(50, 60), c(1, 0)), 50)
+  expect_equal(exposed_ages(c(40, 70), c(2, 1)), c(40, 41, 70))
+})

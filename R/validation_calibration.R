@@ -16,8 +16,9 @@
 # sum w_i (w_i - 1) u_i^2, of each estimator's linearization u_i. Since both
 # E_g and O_g are estimated from the sample, the linearization of
 # log(E_g / O_g) is u_i = (p_i / E_g - y_i / O_g) / N_g. Earlier versions
-# ignored the sampling variability of E, which made the E/O intervals of
-# sampled data too narrow; in a full cohort the intervals are unchanged.
+# treated E as fixed, ignoring its sampling variance and its covariance with
+# O (which can widen or narrow the interval); in a full cohort the intervals
+# are unchanged.
 #
 # Tests over G risk-score groups:
 # * Hosmer-Lemeshow: HL = sum_g (O_g - E_g)^2 / V_g on G degrees of freedom.

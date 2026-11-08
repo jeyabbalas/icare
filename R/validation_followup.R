@@ -50,16 +50,21 @@ validate_study_data <- function(study.data) {
           "for every subject; it is not in ", sum(entry >= exit), " row(s), the first ",
           "being row ", which(entry >= exit)[1], ".")
   }
-  onset <- numeric_column("time.of.onset")
-  if (any(onset < 0)) {
-    abort("`study.data$time.of.onset` must be the time from study entry to disease ",
-          "onset (non-negative), or Inf for subjects without the disease.")
+  onset <- data[["time.of.onset"]]
+  if (is.logical(onset)) onset <- as.numeric(onset)
+  if (!is.numeric(onset)) {
+    abort("`study.data$time.of.onset` must be numeric.")
   }
+  onset <- as.numeric(onset)
   if (any(outcome == 1 & !is.finite(onset))) {
     abort("Every case (`observed.outcome` = 1) needs a finite `time.of.onset`.")
   }
-  # The onset of a non-case plays no role.
+  # The onset of a non-case plays no role (it may be Inf or NA).
   onset[outcome == 0] <- Inf
+  if (any(onset < 0)) {
+    abort("`study.data$time.of.onset` must be the time from study entry to disease ",
+          "onset (non-negative) for cases.")
+  }
 
   sampling_prob <- NULL
   if (!is.null(data[["sampling.weights"]])) {
