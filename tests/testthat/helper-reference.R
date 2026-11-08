@@ -47,7 +47,8 @@ reference_donors <- function(model, design_row) {
   population <- model$population
   weights <- population$weights
   present <- which(!is.na(design_row))
-  ref_lp <- as.vector(population$design[, present, drop = FALSE] %*% model$beta[present])
+  design <- population_design(population)
+  ref_lp <- as.vector(design[, present, drop = FALSE] %*% model$beta[present])
   observed_lp <- sum(design_row[present] * model$beta[present])
   cuts <- get_cutpoints(ref_lp, seq(0, 1, 0.01))
   bin <- get_miss_perc(cuts, observed_lp)
@@ -96,6 +97,6 @@ reference_missing_column_risk <- function(model, design_row, start, length) {
   missing <- which(is.na(design_row))
   completed <- matrix(design_row, nrow = length(donors), ncol = length(design_row),
                       byrow = TRUE)
-  completed[, missing] <- model$population$design[donors, missing]
+  completed[, missing] <- population_design(model$population)[donors, missing]
   reference_average_risk(model, donors, as.vector(completed %*% model$beta), start, length)
 }

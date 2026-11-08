@@ -443,7 +443,7 @@ check_subject_values <- function(x, name, n, lower = -Inf, upper = Inf) {
 #' Windows of the reference population from entry and exit ages
 #' @noRd
 reference_windows <- function(model, entry, exit) {
-  n_reference <- sum(model$population$block == 1L)
+  n_reference <- sum(model$population$copy == 1L)
   check <- function(x, name) {
     x <- as.vector(x)
     if (!is.numeric(x) || anyNA(x) || any(!is.finite(x)) ||

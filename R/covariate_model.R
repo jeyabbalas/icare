@@ -172,7 +172,9 @@ prepare_covariate_data <- function(data, cov_info, name, allow_missing) {
 #' @noRd
 build_design_spec <- function(formula, reference) {
   rhs <- stats::delete.response(stats::terms(formula))
-  frame <- stats::model.frame(rhs, data = reference, na.action = stats::na.fail)
+  # (The covariates are complete; missing values here would come from the
+  # formula's transformations and are reported below.)
+  frame <- stats::model.frame(rhs, data = reference, na.action = stats::na.pass)
   model_terms <- attr(frame, "terms")
   factor_columns <- names(frame)[vapply(frame, is.factor, logical(1))]
   contrasts <- if (length(factor_columns) > 0L) {
@@ -190,6 +192,12 @@ build_design_spec <- function(formula, reference) {
   full <- stats::model.matrix(model_terms, frame, contrasts.arg = contrasts)
   keep <- colnames(full) != "(Intercept)"
   design <- full[, keep, drop = FALSE]
+  undefined <- rowSums(!is.finite(design)) > 0
+  if (any(undefined)) {
+    abort("`model.formula` gives infinite or undefined values (for example, ",
+          "log(0)) in row(s) ", format_names(which(undefined)),
+          " of `model.ref.dataset`.")
+  }
   spec$columns <- colnames(design)
   spec$column_covariates <- column_covariates(model_terms, attr(full, "assign")[keep])
   dimnames(design) <- list(NULL, spec$columns)

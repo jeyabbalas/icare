@@ -36,13 +36,18 @@ pair_batch_size <- 2000000L
 #' Quantiles (type 7) at `probs`, rounded down to a precision of 0.1% of the
 #' standard deviation, de-duplicated, with Inf appended. Bins are the
 #' half-open intervals from cut_k to cut_k+1.
+#' @param sorted Optionally, `sort(ref_lp)`, to save sorting again.
 #' @noRd
-get_cutpoints <- function(ref_lp, probs) {
+get_cutpoints <- function(ref_lp, probs, sorted = NULL) {
   se <- stats::sd(ref_lp, na.rm = TRUE)
   if (is.na(se) || se < 1e-12) se <- 1e-12
   precision <- 1 / (0.001 * se)
   digits <- sum(precision >= 10^(1:16))
-  cuts <- stats::quantile(ref_lp, probs = probs, names = FALSE)
+  cuts <- if (is.null(sorted)) {
+    stats::quantile(ref_lp, probs = probs, names = FALSE)
+  } else {
+    sorted_quantiles(sorted, probs)
+  }
   cuts <- floor(cuts * 10^digits) / 10^digits
   cuts <- c(unique(cuts), Inf)
   if (length(cuts) < 2L) {
@@ -50,6 +55,23 @@ get_cutpoints <- function(ref_lp, probs) {
           "reference linear predictor.")
   }
   cuts
+}
+
+#' Type-7 quantiles of sorted values
+#'
+#' The computation of stats::quantile(type = 7), on values already sorted, so
+#' the results are identical.
+#' @noRd
+sorted_quantiles <- function(sorted, probs) {
+  n <- length(sorted)
+  index <- 1 + max(n - 1, 0) * probs
+  lo <- floor(index)
+  hi <- ceiling(index)
+  quantiles <- sorted[lo]
+  i <- which(index > lo & sorted[hi] != quantiles)
+  h <- (index - lo)[i]
+  quantiles[i] <- (1 - h) * quantiles[i] + h * sorted[hi[i]]
+  quantiles
 }
 
 #' Bin of each linear predictor (vectorized get_miss_perc())
@@ -128,12 +150,19 @@ impute_pattern <- function(rows, present, missing_variables, ctx) {
 
   # ----- Donors: the profile's percentile bin of the observed linear predictor
   if (length(present_columns) > 0L) {
-    ref_lp <- as.vector(population$design[, present_columns, drop = FALSE] %*%
-                          beta[present_columns])
-    observed_lp <- as.vector(ctx$design[rows, present_columns, drop = FALSE] %*%
-                               beta[present_columns])
+    ref_parts <- block_parts(population$designs, population$columns, beta,
+                             present_columns, population$design_lp)
+    ref_lp <- sum_parts(ref_parts, n_population)
+    profile_design <- ctx$design[rows, , drop = FALSE]
+    profile_design[is.na(profile_design)] <- 0
+    profile_blocks <- lapply(population$columns, function(columns) {
+      profile_design[, columns, drop = FALSE]
+    })
+    observed_lp <- sum_parts(block_parts(profile_blocks, population$columns, beta,
+                                         present_columns), length(rows))
     donor_ranges <- match_donor_ranges(ref_lp, observed_lp, population$weights)
   } else {
+    ref_parts <- vector("list", length(population$designs))
     observed_lp <- numeric(length(rows))
     donor_ranges <- list(order = seq_len(n_population),
                          low = rep(1L, length(rows)),
@@ -150,11 +179,7 @@ impute_pattern <- function(rows, present, missing_variables, ctx) {
   }, logical(1))
   donor_columns <- absent_columns[!mixed]
   mixed_columns <- absent_columns[mixed]
-  donor_lp <- if (length(donor_columns) > 0L) {
-    as.vector(population$design[, donor_columns, drop = FALSE] %*% beta[donor_columns])
-  } else {
-    numeric(n_population)
-  }
+  donor_lp <- donor_linear_predictor(population, beta, donor_columns, ref_parts)
 
   if (length(mixed_columns) == 0L) {
     impute_additive(rows, observed_lp, donor_lp, donor_ranges, ctx)
@@ -177,7 +202,7 @@ match_donor_ranges <- function(ref_lp, observed_lp, weights) {
     hi >= lo & (cumulative_weight[hi + 1L] - cumulative_weight[lo]) > 0
   }
 
-  cuts <- get_cutpoints(ref_lp, seq(0, 1, 1 / missing_data_bins))
+  cuts <- get_cutpoints(ref_lp, seq(0, 1, 1 / missing_data_bins), sorted)
   bin <- get_miss_perc(cuts, observed_lp)
   low <- cuts[bin]
   high <- cuts[bin + 1L]
@@ -275,6 +300,11 @@ impute_with_recomputation <- function(rows, observed_lp, donor_lp, donor_ranges,
   weights <- population$weights
   beta <- ctx$beta
   missing_covariates <- intersect(missing_set, names(ctx$covariate_data))
+  # The blocks of the mixed columns (interactions of an observed and a
+  # missing covariate)
+  mixed_blocks <- which(vapply(population$columns, function(columns) {
+    any(columns %in% mixed_columns)
+  }, logical(1)))
   n_rows <- length(rows)
   risk <- lp <- survival <- numeric(n_rows)
 
@@ -289,15 +319,38 @@ impute_with_recomputation <- function(rows, observed_lp, donor_lp, donor_ranges,
     counts <- lengths(donor_list)
     donors <- unlist(donor_list, use.names = FALSE)
     profile_index <- rep(batch, counts)
-    completed <- ctx$covariate_data[rows[profile_index], , drop = FALSE]
     reference_rows <- population$reference_row[donors]
-    for (v in missing_covariates) {
-      completed[[v]] <- ctx$reference_data[[v]][reference_rows]
+    completed_value <- function(v) {
+      if (v %in% missing_covariates) {
+        ctx$reference_data[[v]][reference_rows]
+      } else {
+        ctx$covariate_data[[v]][rows[profile_index]]
+      }
     }
-    design <- build_design_matrix(ctx$covariate_spec, completed)
-    mixed_names <- colnames(ctx$design)[mixed_columns]
-    pair_lp <- observed_lp[profile_index] + donor_lp[donors] +
-      as.vector(design[, mixed_names, drop = FALSE] %*% beta[mixed_columns])
+    mixed_lp <- 0
+    for (b in mixed_blocks) {
+      variables <- population$block_covariates[[b]]
+      values <- lapply(variables, completed_value)
+      table <- population$interaction_tables[[b]]
+      contribution <- if (!is.null(table)) {
+        table[do.call(cbind, lapply(values, as.integer))]
+      } else {
+        # The block depends only on its covariates: build one completed design
+        # row per distinct combination of their values.
+        combination <- group_ids(values)
+        first <- which(!duplicated(combination))
+        completed <- ctx$covariate_data[rows[profile_index[first]], , drop = FALSE]
+        for (v in missing_covariates) {
+          completed[[v]] <- ctx$reference_data[[v]][reference_rows[first]]
+        }
+        block_columns <- population$columns[[b]]
+        design <- build_design_matrix(ctx$covariate_spec, completed)
+        linear_product(design[, colnames(ctx$design)[block_columns], drop = FALSE],
+                       beta[block_columns])[match(combination, combination[first])]
+      }
+      mixed_lp <- mixed_lp + contribution
+    }
+    pair_lp <- observed_lp[profile_index] + donor_lp[donors] + mixed_lp
     res <- compute_absolute_risk_engine(pair_lp, ctx$start[rows[profile_index]],
                                         ctx$length[rows[profile_index]],
                                         ctx$baseline, ctx$competing,
@@ -316,6 +369,100 @@ impute_with_recomputation <- function(rows, observed_lp, donor_lp, donor_ranges,
        survival = if (ctx$survival) survival else rep(NA_real_, n_rows))
 }
 
+#' Contributions of the observed columns to the linear predictor, by block
+#'
+#' One element per column block of `designs` (the SNPs, then the covariates
+#' grouped by the covariates they depend on; see population_blocks()):
+#' NULL when none of the block's columns is observed, the cached linear
+#' predictor of the block (`cache`) when all of them are, and otherwise the
+#' sum over the observed columns. The population and the profiles go through
+#' the same arithmetic, so equal rows get equal values; the percentile bins
+#' depend on these values, so they are exact sums rather than differences.
+#' @param columns List of the columns of each block in `beta`.
+#' @param present Indices of the observed columns in `beta`.
+#' @noRd
+block_parts <- function(designs, columns, beta, present, cache = NULL) {
+  lapply(seq_along(designs), function(b) {
+    used <- columns[[b]] %in% present
+    if (!any(used)) {
+      return(NULL)
+    }
+    if (!is.null(cache) && all(used)) {
+      return(cache[[b]])
+    }
+    masked_product(designs[[b]], beta[columns[[b]]], which(used))
+  })
+}
+
+sum_parts <- function(parts, n) {
+  total <- numeric(n)
+  for (part in parts) {
+    if (!is.null(part)) total <- total + part
+  }
+  total
+}
+
+#' Contribution of the donor-completed columns to each donor's linear predictor
+#'
+#' A block whose columns are all completed contributes its cached linear
+#' predictor. Within the SNP block every column is either observed or
+#' completed (SNPs do not interact), so its contribution is the block total
+#' less the observed part, which saves reading the genotypes again; the
+#' difference is exact to rounding, which the risks tolerate (unlike the
+#' percentile bins). In a covariate block the completed columns are summed.
+#' @param ref_parts Output of block_parts() for the population.
+#' @noRd
+donor_linear_predictor <- function(population, beta, donor_columns, ref_parts) {
+  total <- numeric(length(population$weights))
+  for (b in seq_along(population$designs)) {
+    block_columns <- population$columns[[b]]
+    completed <- block_columns %in% donor_columns
+    if (!any(completed)) next
+    part <- if (all(completed)) {
+      population$design_lp[[b]]
+    } else if (population$snp_block[b]) {
+      population$design_lp[[b]] - ref_parts[[b]]
+    } else {
+      masked_product(population$designs[[b]], beta[block_columns], which(completed))
+    }
+    total <- total + part
+  }
+  total
+}
+
+#' Product of a design block with the coefficients of some of its columns
+#'
+#' The other coefficients are set to zero. Within one block this reads fewer
+#' bytes than copying the columns out first, and it gives the same sums.
+#' @noRd
+masked_product <- function(design, coefficients, used) {
+  masked <- numeric(length(coefficients))
+  masked[used] <- coefficients[used]
+  linear_product(design, masked)
+}
+
+#' Matrix-vector product through BLAS
+#'
+#' R's default matrix product first scans its inputs for NaN and Inf, which
+#' costs as much as the product here; the design blocks and coefficients are
+#' finite, so BLAS is called directly.
+#' @noRd
+linear_product <- function(design, coefficients) {
+  old <- options(matprod = "blas")
+  on.exit(options(old))
+  product <- design %*% coefficients
+  dim(product) <- NULL
+  product
+}
+
+#' The whole design matrix of the population, with the columns in the order
+#' of the coefficients
+#' @noRd
+population_design <- function(population) {
+  design <- do.call(cbind, population$designs)
+  design[, order(unlist(population$columns)), drop = FALSE]
+}
+
 new_pair_batch <- function() {
   list(lp = numeric(0), start = numeric(0), length = numeric(0),
        weight = numeric(0), target = integer(0))
@@ -325,6 +472,17 @@ add_to_pair_batch <- function(batch, lp, start, length, weight, target) {
   list(lp = c(batch$lp, lp), start = c(batch$start, start),
        length = c(batch$length, length), weight = c(batch$weight, weight),
        target = c(batch$target, target))
+}
+
+# Integer id per row of a list of equal-length vectors (factors or atomic
+# vectors); equal rows get equal ids.
+group_ids <- function(columns) {
+  id <- rep(1, length(columns[[1L]]))
+  for (x in columns) {
+    code <- if (is.factor(x)) as.integer(x) else match(x, unique(x))
+    id <- match((id - 1) * max(code) + code, unique((id - 1) * max(code) + code))
+  }
+  id
 }
 
 # Integer id per row of a data frame; equal rows get equal ids.

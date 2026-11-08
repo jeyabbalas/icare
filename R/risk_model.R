@@ -133,37 +133,47 @@ build_risk_model <- function(model.formula = NULL, model.cov.info = NULL,
   }
 
   # ----- Reference population and coefficients
-  if (has_covariates && has_snps) {
-    n_reference <- nrow(model$covariates$data)
+  # With SNPs, the population is n.imp copies of the reference population
+  # with independently simulated genotypes. Its design matrix is kept in
+  # column blocks (population_blocks()), so that the linear predictor of the
+  # observed risk factors of a profile is a sum of cached block contributions
+  # (missing_covariates.R).
+  genotypes <- NULL
+  if (has_snps) {
     genotypes <- simulate_snp_genotypes(snps$log_or, snps$freq,
                                         rep(fh_population, n_imp))
+    colnames(genotypes) <- snps$names
+  }
+  if (has_covariates && has_snps) {
+    n_reference <- nrow(model$covariates$data)
     replicate_rows <- rep(seq_len(n_reference), n_imp)
-    population <- list(
-      design = cbind(genotypes, model$covariates$design[replicate_rows, , drop = FALSE]),
-      weights = rep(model$covariates$weights, n_imp) / n_imp,
-      reference_row = replicate_rows,
-      block = rep(seq_len(n_imp), each = n_reference)
-    )
+    covariate_design <- model$covariates$design[replicate_rows, , drop = FALSE]
+    population <- list(weights = rep(model$covariates$weights, n_imp) / n_imp,
+                       reference_row = replicate_rows,
+                       copy = rep(seq_len(n_imp), each = n_reference))
     beta <- c(snps$log_or, beta_covariates)
   } else if (has_covariates) {
     n_reference <- nrow(model$covariates$data)
-    population <- list(design = model$covariates$design,
-                       weights = model$covariates$weights,
+    covariate_design <- model$covariates$design
+    population <- list(weights = model$covariates$weights,
                        reference_row = seq_len(n_reference),
-                       block = rep(1L, n_reference))
+                       copy = rep(1L, n_reference))
     beta <- beta_covariates
   } else {
-    genotypes <- simulate_snp_genotypes(snps$log_or, snps$freq,
-                                        rep(fh_population, n_imp))
+    covariate_design <- NULL
     n_population <- nrow(genotypes)
-    population <- list(design = genotypes,
-                       weights = rep(1 / n_population, n_population),
+    population <- list(weights = rep(1 / n_population, n_population),
                        reference_row = NULL,
-                       block = rep(seq_len(n_imp), each = snp_only_population_size))
+                       copy = rep(seq_len(n_imp), each = snp_only_population_size))
     beta <- snps$log_or
   }
-  colnames(population$design) <- names(beta)
-  population$lp <- as.vector(population$design %*% beta)
+  population <- c(population, population_blocks(
+    genotypes, covariate_design,
+    if (has_covariates) model$covariates$spec$column_covariates, beta))
+  if (has_covariates) {
+    population$interaction_tables <- factor_interaction_tables(population,
+                                                               model$covariates, beta)
+  }
   model$population <- population
   model$beta <- beta
   model$column_variables <- c(if (has_snps) as.list(snps$names),
@@ -173,6 +183,80 @@ build_risk_model <- function(model.formula = NULL, model.cov.info = NULL,
   model$baseline <- calibrate_baseline_hazard(model$incidence, population$lp,
                                               population$weights)
   model
+}
+
+#' Column blocks of the population's design matrix
+#'
+#' The SNP columns form one block; the covariate columns are grouped by the
+#' covariates they depend on (a main effect, or the covariates of an
+#' interaction), so that each covariate block is either observed or missing
+#' as a whole in a profile. Each block keeps its linear predictor.
+#' @param column_covariates For each covariate column, the covariates it
+#'   depends on.
+#' @return A list with the block `designs`, their `columns` in `beta`,
+#'   `snp_block` (whether each block holds SNPs), the covariates of each
+#'   block (`block_covariates`, NULL for SNPs), their linear predictors
+#'   `design_lp`, and the total linear predictor `lp`.
+#' @noRd
+population_blocks <- function(genotypes, covariate_design, column_covariates, beta) {
+  designs <- list()
+  columns <- list()
+  block_covariates <- list()
+  offset <- 0L
+  if (!is.null(genotypes)) {
+    designs <- list(genotypes)
+    columns <- list(seq_len(ncol(genotypes)))
+    block_covariates <- list(NULL)
+    offset <- ncol(genotypes)
+  }
+  if (!is.null(covariate_design)) {
+    sets <- lapply(column_covariates, function(v) sort(unique(v)))
+    key <- vapply(sets, paste, character(1), collapse = "\r")
+    groups <- unname(split(seq_along(key), factor(key, levels = unique(key))))
+    designs <- c(designs, lapply(groups, function(g) covariate_design[, g, drop = FALSE]))
+    columns <- c(columns, lapply(groups, function(g) offset + g))
+    block_covariates <- c(block_covariates, lapply(groups, function(g) sets[[g[1]]]))
+  }
+  snp_block <- !is.null(genotypes) & seq_along(designs) == 1L
+  design_lp <- lapply(seq_along(designs), function(b) {
+    linear_product(designs[[b]], beta[columns[[b]]])
+  })
+  list(designs = designs, columns = columns, snp_block = snp_block,
+       block_covariates = block_covariates, design_lp = design_lp,
+       lp = Reduce(`+`, design_lp))
+}
+
+#' Contributions of interactions of factors, tabulated by the factor levels
+#'
+#' A covariate block that depends on several covariates, all of them factors
+#' (an interaction of factors), contributes one value per combination of
+#' levels. The tables save building design rows when a profile's missing
+#' factor is completed by donors (missing_covariates.R).
+#' @return One element per block: an array indexed by the level codes of the
+#'   block's covariates, or NULL.
+#' @noRd
+factor_interaction_tables <- function(population, covariates, beta) {
+  lapply(seq_along(population$designs), function(b) {
+    variables <- population$block_covariates[[b]]
+    if (length(variables) < 2L ||
+        !all(vapply(variables, function(v) is.factor(covariates$data[[v]]), logical(1)))) {
+      return(NULL)
+    }
+    levels <- lapply(variables, function(v) levels(covariates$data[[v]]))
+    if (prod(lengths(levels)) > 1e5) {
+      return(NULL)
+    }
+    grid <- expand.grid(levels, KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
+    rows <- covariates$data[rep(1L, nrow(grid)), , drop = FALSE]
+    for (k in seq_along(variables)) {
+      rows[[variables[k]]] <- factor(grid[[k]], levels = levels[[k]])
+    }
+    block_columns <- population$columns[[b]]
+    design <- build_design_matrix(covariates$spec, rows)
+    contribution <- linear_product(design[, names(beta)[block_columns], drop = FALSE],
+                                   beta[block_columns])
+    array(contribution, dim = lengths(levels))
+  })
 }
 
 #' Code the profiles whose risks are requested
@@ -205,6 +289,16 @@ prepare_profiles <- function(model, apply.cov.profile = NULL, apply.snp.profile 
     cov_design <- build_design_matrix(model$covariates$spec, covariate_data)
     cov_missing <- is.na(as.matrix(covariate_data))
     colnames(cov_missing) <- names(covariate_data)
+    # A design value may be missing only where one of its covariates is.
+    expected_missing <- matrix(vapply(model$covariates$spec$column_covariates, function(v) {
+      rowSums(cov_missing[, v, drop = FALSE]) > 0
+    }, logical(n)), nrow = n)
+    undefined <- rowSums(!is.finite(cov_design) & !expected_missing) > 0
+    if (any(undefined)) {
+      abort("`model.formula` gives infinite or undefined values (for example, ",
+            "log(0)) in row(s) ", format_names(which(undefined)),
+            " of `apply.cov.profile`.")
+    }
   } else {
     if (!is.null(apply.cov.profile)) {
       abort("`apply.cov.profile` was supplied, but the model has no covariates: ",
@@ -295,13 +389,13 @@ predict_risks <- function(model, profiles, start, length, survival = FALSE) {
 #'
 #' For a model with covariates, one risk per row of `model.ref.dataset`; with
 #' SNPs, each row's risk is averaged over its `n.imp` simulated genotype sets.
-#' For a SNP-only model, the risks of the first set of simulated people.
+#' For a SNP-only model, the risks of the first copy of simulated people.
 #' @param start,length Windows: length 1, or one per reference row.
 #' @noRd
 reference_risks <- function(model, start, length) {
   population <- model$population
-  first_block <- population$block == 1L
-  n_reference <- sum(first_block)
+  first_copy <- population$copy == 1L
+  n_reference <- sum(first_copy)
   if (base::length(start) == 1L) start <- rep(start, n_reference)
   if (base::length(length) == 1L) length <- rep(length, n_reference)
   if (base::length(start) != n_reference || base::length(length) != n_reference) {
@@ -313,7 +407,7 @@ reference_risks <- function(model, start, length) {
   check_rate_coverage(model$competing, needed, "model.competing.incidence.rates")
 
   if (!model$has_covariates) {
-    return(compute_absolute_risk_engine(population$lp[first_block], start, length,
+    return(compute_absolute_risk_engine(population$lp[first_copy], start, length,
                                         model$baseline, model$competing))
   }
   row <- population$reference_row
@@ -327,7 +421,7 @@ reference_risks <- function(model, start, length) {
 reference_linear_predictors <- function(model) {
   population <- model$population
   if (!model$has_covariates) {
-    return(population$lp[population$block == 1L])
+    return(population$lp[population$copy == 1L])
   }
   row <- population$reference_row
   as.vector(rowsum(population$lp, row, reorder = TRUE)) / model$n_imp^model$has_snps

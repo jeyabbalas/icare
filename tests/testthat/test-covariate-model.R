@@ -57,6 +57,25 @@ test_that("design matrices code factors with the declared levels and reference",
                "cannot contain missing values")
 })
 
+test_that("transformations that give infinite or undefined values are rejected", {
+  info <- normalize_cov_info(toy_cov_info, y ~ log(x) + g)
+  bad_reference <- prepare_covariate_data(data.frame(x = c(1, 0, 2, -1), g = "a"), info,
+                                          "ref", allow_missing = FALSE)
+  expect_error(suppressWarnings(build_design_spec(y ~ log(x) + g, bad_reference)),
+               "infinite or undefined values .* row\\(s\\) 2 and 4 of `model.ref.dataset`")
+  reference <- data.frame(x = rep(1:4, 60), g = rep(c("a", "b", "c"), 80))
+  args <- list(model.formula = y ~ log(x) + g, model.cov.info = toy_cov_info,
+               model.log.RR = c(`log(x)` = 0.2, ga = 0.1, gc = -0.1),
+               model.ref.dataset = reference,
+               model.disease.incidence.rates = cbind(20:90, 1e-3),
+               model.competing.incidence.rates = cbind(20:90, 5e-3))
+  model <- do.call(build_risk_model, args)
+  # a missing covariate may leave its columns undefined; an observed one may not
+  expect_silent(prepare_profiles(model, data.frame(x = c(2, NA), g = "a")))
+  expect_error(prepare_profiles(model, data.frame(x = c(2, 0, NA), g = c("a", NA, "c"))),
+               "row\\(s\\) 2 of `apply.cov.profile`")
+})
+
 test_that("the example design matrix equals model.matrix()", {
   info <- normalize_cov_info(bc$bc_model_cov_info, bc$bc_model_formula)
   reference <- prepare_covariate_data(bc$ref_cov_dat, info, "ref", allow_missing = FALSE)
