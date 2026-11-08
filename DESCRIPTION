@@ -34,11 +34,8 @@ Depends:
     R (>= 4.1.0)
 Imports:
     ggplot2 (>= 3.5.0),
-    graphics,
-    grid,
     patchwork (>= 1.2.0),
-    stats,
-    utils
+    stats
 Suggests:
     bench,
     knitr,

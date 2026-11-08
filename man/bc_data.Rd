@@ -101,10 +101,13 @@ head(bc_72_snps)
 # Inclusion probabilities of the nested case-control study, estimated from
 # the cohort by logistic regression (as in the vignette)
 cohort <- validation.cohort.data
-cohort$inclusion <- as.numeric(cohort$id \%in\% validation.nested.case.control.data$id)
-selection <- glm(inclusion ~ observed.outcome * (study.entry.age + observed.followup),
-                 data = cohort, family = binomial)
-probability <- fitted(selection)[match(validation.nested.case.control.data$id, cohort$id)]
+ncc <- validation.nested.case.control.data
+cohort$inclusion <- as.numeric(cohort$id \%in\% ncc$id)
+selection <- glm(
+  inclusion ~ observed.outcome * (study.entry.age + observed.followup),
+  data = cohort, family = binomial
+)
+probability <- fitted(selection)[match(ncc$id, cohort$id)]
 summary(probability)
 }
 \references{
